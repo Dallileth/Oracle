@@ -1,0 +1,44 @@
+﻿@inject ISnackbar Snack;
+
+@inject RestAPI API; 
+<InputFile id="myinputfile" OnChange="@(e=>UploadFile.Execute(e))" hidden />
+<MyButton for="myinputfile" HtmlTag="label" FullWidth="true" Command="UploadFile">Upload File</MyButton>
+
+<MudText Typo="Typo.subtitle2" Align="Align.Center">@FileID</MudText>
+@code {
+    [Parameter]
+    public int? FileID { get; set; }
+    [Parameter]
+    public EventCallback<int?> FileIDChanged { get; set; }
+
+    Command UploadFile;
+    protected override void OnInitialized()
+    {
+        UploadFile = new Command(
+            "Upload",StateHasChanged,
+            async (obj) =>
+            {
+                InputFileChangeEventArgs e = obj as InputFileChangeEventArgs;
+                if (e.File.Size > FilesSettings.MaxSizeBytes)
+                {
+                    throw new ProblemException($"File exceeds {e.File.Size.ToStringBytes()}");
+                }
+                if (FileID is null)
+                    throw new ProblemException("File ID required");
+
+                var file2 = e.File;
+                var buffers = new byte[file2.Size];
+                await file2.OpenReadStream(FilesSettings.MaxSizeBytes).ReadAsync(buffers);
+                await API.Post<bool>("files", new FilePostBody
+                {
+                    FileID = FileID.Value,
+                    Data = buffers,
+                    FileType = file2.ContentType,
+                    FileExt = System.IO.Path.GetExtension(file2.Name).Substring(1)
+                });
+            });
+    }
+
+
+
+}

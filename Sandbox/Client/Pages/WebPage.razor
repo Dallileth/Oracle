@@ -1,0 +1,226 @@
+﻿@page "/web"
+@inject RestAPI API;
+@inject ISnackbar Snack;
+@implements IDisposable
+@using System.Timers;
+
+
+
+<div class="d-flex">
+    <MudCard class="d-flex flex-column">
+        <MudText Align="Align.Center">Button Errors</MudText>
+        <MudDivider />
+        <MudButtonGroup VerticalAlign="true" Color="Color.Error">
+
+            @foreach (var item in _button_errors)
+            {
+                <MyButton Name="@item.Item1" Command="RunCommand" CommandParameter="item.Item2" DisabledWhileRunning="false"></MyButton>
+            }
+        </MudButtonGroup>
+    </MudCard>
+    <MudCard class="d-flex flex-column ml-3">
+        <MudText Align="Align.Center">API</MudText>
+        <MudDivider />
+        <MudButtonGroup>
+            <MudButton OnClick="Login" FullWidth="true">
+                Login
+            </MudButton>
+            <MudButton OnClick="@(e=>_api.Auth=null)" FullWidth="true">
+                Logout
+            </MudButton>
+        </MudButtonGroup>
+        <MudDivider />
+        <MudText Align="Align.Center" Typo="Typo.caption">@((timeleft>0?$"{(timeleft)}s remain":"OK APIs (Login required)"))</MudText>
+        <MudDivider />
+        <MudButtonGroup VerticalAlign="true" Color="@(timeleft>0?Color.Success:Color.Error)">
+            @foreach (var item in _oks)
+            {
+                <MyButton Name="@item.Item1" Command="RunCommand" CommandParameter="item.Item2" DisabledWhileRunning="false"></MyButton>
+            }
+        </MudButtonGroup>
+        <MudDivider />
+        <MudText Align="Align.Center" Typo="Typo.caption">Not OK</MudText>
+        <MudDivider />
+        <MudButtonGroup VerticalAlign="true" Color="Color.Error">
+            @foreach (var item in _errors)
+            {
+                <MyButton Name="@item.Item1" Command="RunCommand" CommandParameter="item.Item2" DisabledWhileRunning="false"></MyButton>
+            }
+        </MudButtonGroup>
+    </MudCard>
+</div>
+
+
+@code {
+
+    Command RunCommand;
+    RestAPI _api;
+    Timer _timer;
+    int timeleft;
+    void TimerElapsed(object o, ElapsedEventArgs args)
+    {
+        try
+        {
+            if (_api.Auth == null)
+            {
+                timeleft = 0;
+                _timer.Stop();
+            }
+            timeleft = (int)(_api.Auth.Expires.Value - DateTime.UtcNow).TotalSeconds;
+            if (timeleft <= 0)
+                _timer.Stop();
+        }
+        catch
+        {
+            timeleft = 0;
+            _timer.Stop();
+            Snack.Add("Timer error");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+    void AuthChanged(object o, Auth auth)
+    {
+        if (auth == null)
+        {
+            _timer.Stop();
+            timeleft = 0;
+            Snack.Add("Authorization expired");
+        }
+        else
+        {
+            timeleft = (int)(auth.Expires.Value - DateTime.UtcNow).TotalSeconds; ;
+            _timer.Start();
+        }
+    }
+
+    async Task Login()
+    {
+        var token = await API.Post<LoginResponse>(
+                    "login",
+                    new LoginBody
+                    {
+                        UserName="admin",
+                        Password="admin",
+                        Seconds = 14
+                    },
+                    check_auth: false);
+
+        if (!string.IsNullOrWhiteSpace(token?.Token))
+        {
+            _api.SetAuth("Bearer", token.Token, token.Expires);
+
+        }
+    }
+
+
+    (string, Func<Task<string>>)[] _button_errors;
+    (string, Func<Task<string>>)[] _errors;
+    (string, Func<Task<string>>)[] _oks;
+    protected override void OnInitialized()
+    {
+        _timer = new Timer();
+        _timer.Interval = 1000;
+        _timer.Elapsed += TimerElapsed;
+        _api = new RestAPI(API.BaseAddress);
+        _api.OnAuthChanged += AuthChanged;
+        RunCommand = new Command("Run", StateHasChanged,
+       async (obj) =>
+       {
+           Snack.Add(await ((Func<Task<string>>)obj)(), Severity.Success);
+       });
+        //note: all check_auth does is throw an error if the auth is null or expired
+        //setting check_auth to false will make an *attempt* to call the endpoint
+        _button_errors = new (string, Func<Task<string>>)[]
+        {
+            ("Divide by zero", async () =>
+            {
+                int a=0;
+                return (1/a).ToString();
+            }),
+            ("Throw Problem Exception", async () =>
+            {
+                throw new ProblemException("Detail","Title");
+            }),
+                };
+        _errors = new (string, Func<Task<string>>)[]
+        {
+
+            ("API Missing",
+            async () =>
+            {
+                await _api.Post<string>("test/doesnotexist", check_auth: false);
+                return "Oops, it was found";
+            }),
+            ("API Requires ZZZ Role (does not exist)",
+                async ()=>
+                {
+                    return await _api.Get<string>("test/requiresdnerole",check_auth:false);
+                }
+            ),
+            ("API Forbidden",
+            async () =>
+            {
+                return await _api.Get<string>("test/forbidden",check_auth:false);
+            }),
+            ("API Problem",
+            async () =>
+            {
+                return await _api.Get<string>("test/problemreturn",check_auth:false);
+            }),
+            ("API Timeout (5 seconds)",
+            async () =>
+            {
+                return await _api.Get<string>("test/timeout",check_auth:false,timeout:TimeSpan.FromSeconds(5));
+            }),
+            ("API Throw Problem Exception",
+            async () =>
+            {
+                return await API.Get<string>("test/problemexception",check_auth:false);
+            }),
+            ("API Divide By Zero",
+            async () =>
+            {
+                return await _api.Get<string>("test/dividebyzero",check_auth:false);
+            })
+                    };
+        _oks = new (string, Func<Task<string>>)[]
+        {
+            ("OK",async()=>{
+                var code= await _api.Get<HttpStatusCode>("test/returnok",check_auth:false);
+                if (code==HttpStatusCode.OK)
+                    return "OK";
+                else
+                    throw new ProblemException(code.ToString(),"Status Code");
+            }),
+            ("String", async () =>
+            {
+                return await _api.Get<string>("test/returnstring",new{ echo="echo text"},check_auth:false);
+            }),
+            ("Int", async () =>
+            {
+                return (await _api.Get<int>("test/returnint",check_auth:false)).ToString();
+            }),
+            ("Ints", async () =>
+            {
+                return string.Join(',', (await _api.Get<int[]>("test/returnints",check_auth:false)));
+            }),
+            ("Datetime",async()=>{
+                return (await _api.Get<DateTime>("test/returndate",check_auth:false)).ToString();
+            }),
+            ("Admin Secret Data",async()=>{
+                return (await _api.Get<string>("test/returnadmindata",check_auth:false)).ToString();
+            })
+                    };
+    }
+    public void Dispose()
+    {
+        _timer.Elapsed -= TimerElapsed;
+        _timer.Stop();
+        _timer.Dispose();
+        _api.OnAuthChanged -= AuthChanged;
+        _api.Dispose();
+    }
+}

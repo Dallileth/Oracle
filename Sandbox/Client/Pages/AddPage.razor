@@ -1,0 +1,21 @@
+﻿@inject RestAPI API;
+@page "/add"
+
+
+<MudText>Error Rate: @(error)%</MudText>
+<MudSlider Min="0" Max="100" @bind-Value="error" Color="Color.Primary"></MudSlider>
+@foreach (var item in tests)
+{
+    <AddCard Number1="@item.Item1" Number2="@item.Item2"  ErrorRate="@error"></AddCard>
+}
+
+@code {
+    int error=12;
+    (int,int)[] tests = new (int, int)[4]
+    {
+        (5,7)
+        ,(2,3)
+        ,(2,6)
+        ,(9,27)
+    };
+}

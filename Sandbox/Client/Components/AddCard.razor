@@ -1,0 +1,62 @@
+﻿@inherits RazorVM<string, (int, int)>
+@inject RestAPI API;
+
+<MudCard Class="my-2">
+    <MudCardContent>
+        <div class="d-flex justify-space-between align-center">
+            <MudTextField Label="Sum1" @bind-Value="@Number1" Class="mx-2"></MudTextField>
+            <MudText Typo="Typo.h5" Class="mx-2">+</MudText>
+            <MudTextField Label="Sum2" @bind-Value="@Number1" Class="mx-2"></MudTextField>
+            <MudIconButton Icon="@Icons.Material.Filled.East" OnClick="@(e=>Refresh((Number1,Number2)))" Class="mx-2" Variant="Variant.Outlined"></MudIconButton>
+            <div class="mx-2" style="min-width:200px">
+                @if (this.ViewState == ViewState.Empty)
+                {
+                    <MudAlert Severity="Severity.Error">Empty!</MudAlert>
+
+                }
+                else if (this.ViewState == ViewState.Loading)
+                {
+                    <MudAlert Severity="Severity.Normal">Fetching Data</MudAlert>
+                }
+                else if (ViewState == ViewState.Error)
+                {
+                    if (ViewException is ProblemException)
+                    {
+                        <MudAlert Severity="Severity.Error">@((ViewException as ProblemException).Detail)</MudAlert>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Error">Something went wrong</MudAlert>
+                    }
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Success">@ViewModel</MudAlert>
+                }
+            </div>
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public int ErrorRate { get; set; }
+    [Parameter]
+    public int Number1 { get; set; }
+    [Parameter]
+    public int Number2 { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Refresh((Number1, Number2));
+        }
+    }
+
+    protected override async Task<string> Generate((int, int) sum)
+    {
+        return await API.Get<string>("test/add", new { a = sum.Item1, b = sum.Item2, error=ErrorRate});
+    }
+
+}

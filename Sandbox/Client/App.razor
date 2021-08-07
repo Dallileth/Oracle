@@ -1,0 +1,81 @@
+@inject IJSRuntime _js;
+@inject MyAuth MyAuth
+@inject NavigationManager Navigation;
+@inject ISnackbar Snack;
+@inject RestAPI API;
+@using System.Net
+<MudThemeProvider />
+<MudDialogProvider FullWidth="true"
+                   MaxWidth="MaxWidth.Medium"
+                   CloseButton="true" />
+<MudSnackbarProvider />
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly" PreferExactMatches="@true">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <MudText>You need to login to view this resource</MudText>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+
+@code{
+    protected override async Task OnInitializedAsync()
+    {
+        Command.Init(Snack);
+        currentTheme = darkTheme;
+        try
+        {
+            var jwt = await _js.InvokeAsync<string>("cookies.get", "jwt");
+            var expires = await _js.InvokeAsync<DateTime?>("cookies.get", "expires");
+            if (!string.IsNullOrWhiteSpace(jwt) && expires != null && DateTime.UtcNow < expires.Value)
+            {
+                API.SetAuth("Bearer", jwt, expires);
+            }
+        }
+        catch
+        {
+            await _js.InvokeVoidAsync("cookies.set", "jwt", null, null);
+            await _js.InvokeVoidAsync("cookies.set", "expires", null, null);
+        }
+
+
+    }
+
+    MudTheme currentTheme;
+    MudTheme lightTheme = new MudTheme();
+    MudTheme darkTheme = new MudTheme()
+    {
+        Palette = new Palette()
+        {
+            Black = "#27272f",
+            Background = "#32333d",
+            BackgroundGrey = "#27272f",
+            Surface = "#373740",
+            DrawerBackground = "#27272f",
+            DrawerText = "rgba(255,255,255, 0.50)",
+            DrawerIcon = "rgba(255,255,255, 0.50)",
+            AppbarBackground = "#27272f",
+            AppbarText = "rgba(255,255,255, 0.70)",
+            TextPrimary = "rgba(255,255,255, 0.70)",
+            TextSecondary = "rgba(255,255,255, 0.50)",
+            ActionDefault = "#adadb1",
+            ActionDisabled = "rgba(255,255,255, 0.26)",
+            ActionDisabledBackground = "rgba(255,255,255, 0.12)",
+            Divider = "rgba(255,255,255, 0.12)",
+            DividerLight = "rgba(255,255,255, 0.06)",
+            TableLines = "rgba(255,255,255, 0.12)",
+            LinesDefault = "rgba(255,255,255, 0.12)",
+            LinesInputs = "rgba(255,255,255, 0.3)",
+            TextDisabled = "rgba(255,255,255, 0.2)"
+        }
+    };
+}

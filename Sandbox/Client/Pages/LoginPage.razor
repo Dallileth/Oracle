@@ -1,0 +1,141 @@
+﻿@page "/login"
+@*@layout EmptyLayout*@
+@inject MyAuth MyAuth;
+@inject NavigationManager Navigation;
+@inject ISnackbar Snack;
+@inject IJSRuntime _js;
+@inject RestAPI API;
+<MudGrid Spacing="2">
+    <MudItem xs="12">
+
+        <MudText>
+            This is a sandbox website. Logging in lets you browse the demos.
+        </MudText>
+        <MudTable Dense="true" Items="@sampleusers">
+            <HeaderContent>
+                <MudTh>Username & Password</MudTh>
+                <MudTh>MVVM</MudTh>
+                <MudTh>Chat</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Username">@context.Username</MudTd>
+                <MudTd DataLabel="MVVM">
+                    @if (context.Username == "admin")
+                    {
+                        <MudTooltip Text="WOW WOW WOW WOW. WOW">
+                            @context.MVVM
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        @context.MVVM
+                    }
+                </MudTd>
+                <MudTd DataLabel="Chat">
+                    @context.Chat
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudItem>
+    <MudItem xs="6">
+        <MudCard Style="top:30vh">
+            <MudCardContent>
+                <MudText Typo="Typo.h5">Login</MudText>
+                <MudTextField @bind-Value="username" Variant="Variant.Outlined" Label="Username" Disabled="@logincommand.Running" Required="true" Immediate="true" />
+                <MudTextField @bind-Value="password" Variant="Variant.Outlined" Label="Password" Disabled="@logincommand.Running" Required="true" Immediate="true" />
+                <MudDivider />
+                <MyButton Command="logincommand" Disabled="@(string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password) )"></MyButton>
+            </MudCardContent>
+        </MudCard>
+
+    </MudItem>
+    <MudItem xs="6">
+        <MudCard Style="top:30vh">
+            <MudCardContent>
+                <MudText Typo="Typo.h5">Register</MudText>
+                <MudTextField @bind-Value="username" Variant="Variant.Outlined" Label="Username" Disabled="@registercommand.Running" Required="true" Immediate="true" />
+                <MudTextField @bind-Value="password" Variant="Variant.Outlined" Label="Password" Disabled="@registercommand.Running" Required="true" Immediate="true" />
+                <MudDivider />
+
+                <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary" VerticalAlign="true">
+                    @foreach (var type in Enum.GetValues(typeof(IDType)))
+                    {
+                        <MyButton Command="registercommand" CommandParameter="@type" Name="@type.ToString()" Disabled="@(string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))"></MyButton>
+                    }
+                </MudButtonGroup>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+
+
+@code{
+    SampleUser[] sampleusers = new SampleUser[]
+    {
+        new SampleUser("none","Returns unauthorized","Can't access"),
+        new SampleUser("user","Returns forbidden","Read and write"),
+        new SampleUser("admin","YOU CAN ADD NUMBERS!!","See an admin panel")
+        };
+    string username;
+    string password;
+    Command logincommand;
+    Command registercommand;
+    protected override void OnInitialized()
+    {
+
+        API.ClearAuth();
+        logincommand = new Command("Login", StateHasChanged,
+        async (obj) =>
+        {
+            await Task.Delay(400);
+            var token = await API.Post<LoginResponse>(
+            "login",
+            new LoginBody
+            {
+                UserName = username,
+                Password = password,
+                Seconds = 60 * 60 //1 hour
+        },
+            check_auth: false);
+            if (!string.IsNullOrWhiteSpace(token?.Token))
+            {
+                API.SetAuth("Bearer", token.Token, token.Expires);
+                Navigation.NavigateTo("/");
+            }
+        });
+
+        registercommand = new Command("Register", StateHasChanged,
+            async (idtype) =>
+            {
+                var token = await API.Put<LoginResponse>("login",
+                    new RegisterBody
+                    {
+                        IDType = (IDType)idtype,
+                        UserName = username,
+                        Password = password
+                    }, check_auth: false);
+                if (!string.IsNullOrWhiteSpace(token?.Token))
+                {
+                    API.SetAuth("Bearer", token.Token, token.Expires);
+                    Navigation.NavigateTo("/");
+                }
+
+            });
+    }
+
+
+    class SampleUser
+    {
+        public string Username { get; set; }
+        public string WebAPI { get; set; } = "No additional permissions granted";
+        public string MVVM { get; set; }
+        public string Chat { get; set; }
+        public SampleUser(string username, string mvvm, string chat)
+        {
+            Username = username;
+            MVVM = mvvm;
+            Chat = chat;
+        }
+    }
+}

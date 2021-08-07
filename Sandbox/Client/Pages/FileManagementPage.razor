@@ -1,0 +1,53 @@
+﻿@attribute [Authorize]
+@page "/file"
+@inject MyAuth MyAuth
+
+@inject RestAPI API;
+
+
+<MudGrid>
+    <MudItem xs="6">
+        <MudCard Style="overflow-y: scroll;">
+            <MudCardContent>
+                <MudList>
+                    <MudListSubheader>
+                        Your roles: @(string.Join(',',MyAuth.Me.UIAccess ?? new string[] { "None" }))
+                    </MudListSubheader>
+                    <AuthorizeView Roles="User">
+                        <Authorized>
+                            <MudListItem>
+                                <MudText>This is text is viewable by Users</MudText>
+                            </MudListItem>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <MudListItem>
+                                <MudText>This is text is viewable by Admins</MudText>
+                            </MudListItem>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Admin, User">
+                        <Authorized>
+                            <MudListItem>
+                                <MudText>This is text is viewable by Users and Admins</MudText>
+                            </MudListItem>
+                        </Authorized>
+                    </AuthorizeView>
+                </MudList>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudCard Style="overflow-y: scroll;">
+            <MudCardContent>
+                @foreach (var item in MyAuth.Auth.Claims)
+                {
+                    <MudText>@item.Type @item.Value</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+

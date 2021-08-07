@@ -1,0 +1,153 @@
+﻿@inject MyAuth MyAuth
+@inject ISnackbar Snack;
+@inject RestAPI API;
+
+@implements IAsyncDisposable
+
+    <MudGrid>
+        <MudItem xs="3">
+            <MudCard Outlined="true" Style="height:100%">
+
+                <MudList Dense="true">
+
+                    <MudListSubheader>
+                        Users
+                    </MudListSubheader>
+                    @foreach (var user in users.Values)
+                    {
+                        <MudListItem>
+                            @user.User
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="6">
+            <MudElement Style="@Style" Class="@($"d-flex flex-column {Class}")">
+                <MudCard Class="mudblazor-apps mb-2">
+                    <MudCardContent Style="height:400px;overflow-y:scroll;">
+                        <div class="d-flex flex-column">
+                            @foreach (var message in messages)
+                            {
+                                <MudText Class="my-1" Color="@(message.Verified==true?Color.Default:message.Verified==null?Color.Info:Color.Error)">@($"{(string.IsNullOrWhiteSpace( message.User)?string.Empty:$"{message.User}: ")}{message.Message}")</MudText>
+                                <MudDivider />
+                            }
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+                <MudTextField Class="mt-auto" Immediate="true" @bind-Value="text" Variant="Variant.Outlined" Label="Message" Placeholder="Enter message" @onkeydown="@(e =>{ if (e.Code == "Enter") _sendmessage.Execute(null); })" AdornmentIcon="@Icons.Material.Filled.Send" Adornment="Adornment.End" OnAdornmentClick="@(e=>_sendmessage.Execute(null))" />
+            </MudElement>
+        </MudItem>
+        <MudItem xs="3">
+            <AuthorizeView>
+                <MudCard Outlined="true">
+                    <MudCardContent>
+                        <MudText>Admin Panel</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </AuthorizeView>
+        </MudItem>
+    </MudGrid>
+    @code {
+        Dictionary<string,ChatUser> users = new Dictionary<string,ChatUser>();
+
+        [Parameter]
+        public string Class { get; set; }
+        [Parameter]
+        public string Style { get; set; }
+
+        Command _sendmessage;
+
+        class ChatMessage
+        {
+            public string User { get; set; }
+            public string Message { get; set; }
+            public bool? Verified { get; set; }
+        }
+
+        string text;
+        private List<ChatMessage> messages = new List<ChatMessage>();
+        SignalRVM vm;
+
+
+        protected override async Task OnInitializedAsync()
+        {
+            _sendmessage = new Command("Send Message", StateHasChanged, async (obj) =>
+            {
+                string tosend = text;
+                text = null;
+                StateHasChanged();
+                var item = new ChatMessage
+                {
+                    User = MyAuth.Me.Name,
+                    Verified = null,
+                    Message = tosend
+                };
+
+                messages.Add(item);
+                try
+                {
+                    await API.Post<HttpStatusCode>("chat", new ChatBody { Message = item.Message, ConnectionId = vm.ConnectionID });
+                    item.Verified = true;
+                    StateHasChanged();
+                }
+                catch
+                {
+                    item.Verified = false;
+                    throw;
+                }
+            });
+            try
+            {
+                vm = await
+                    new SignalRVM("chat")
+                    .WithMethod<ChatBody>("addmessage", (resp) =>
+                    {
+                        messages.Add(new ChatMessage { Verified = true, User = resp.ConnectionId, Message = resp.Message });
+                        StateHasChanged();
+                        return Task.CompletedTask;
+                    })
+                    .WithMethod<ChatUser[]>("hello", resp =>
+                    {
+                        foreach (var user in resp)
+                        {
+                            if (!users.ContainsKey(user.ConnectionId))
+                            {
+                                if (resp.Length==1)
+                                    messages.Add(new ChatMessage { Verified = true, Message = $"{user.User} joined" });
+
+                                users.Add(user.ConnectionId, user);
+                            }
+                        }
+
+                        StateHasChanged();
+                        return Task.CompletedTask;
+                    })
+                    .WithMethod<string>("bye", connid =>
+                    {
+                        if (users.ContainsKey(connid))
+                        {
+                            messages.Add(new ChatMessage { Verified = true, Message = $"{users[connid].User} left" });
+                            users.Remove(connid);
+                        }
+                        StateHasChanged();
+                        return Task.CompletedTask;
+                    })
+                    .Complete();
+            }
+            catch (Exception ex)
+            {
+                messages.Add(new ChatMessage { User = "System", Message = "Unable to connect to chat hub", Verified = false });
+                messages.Add(new ChatMessage { User = "System", Message = ex.Message, Verified = false });
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
+        public async ValueTask DisposeAsync()
+        {
+            if (vm != null)
+                await vm.DisposeAsync();
+        }
+    }
