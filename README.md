@@ -1,6 +1,18 @@
-## Features
+## Demo
 
-### Commands
+* [Framework Demo](https://sandboxserver20210807113429.azurewebsites.net)
+* Oracle (Under construction)
+
+## Usage
+
+### Design Goals
+* Minimize API surface area
+* Reduce Razor property and method code pollution
+* Reduce boiler-plate code from application logic 
+
+### Components
+
+#### Commands
 
 * Reuses ICommand pattern used in WPF. Wraps delegates in boilerplate code
 * Manages `{Running}` states
@@ -30,7 +42,7 @@
 }
 ```
 
-### RazorVM<VIEWMODEL,REFRESHMODEL>
+#### RazorVM<VIEWMODEL,REFRESHMODEL>
 
 * Reuses MVVM pattern used in WPF. Wraps data-fetching in boilerplate code
 * `VIEWMODEL Generate(REFRESHMODEL)` generates data
@@ -76,7 +88,7 @@ else
 }
 ```
 
-### WebAPI / Authorization
+#### WebAPI / Authorization
 
 * Endpoints are protected server-side by blocking access with WebController attributes and, optionally, controller code
 * Endpoints are protected client-side by hiding views using `AuthorizedViews`
