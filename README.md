@@ -30,12 +30,12 @@
 }
 ```
 
-### RazorVM
+### RazorVM<VIEWMODEL,REFRESHMODEL>
 
 * Reuses MVVM pattern used in WPF. Wraps data-fetching in boilerplate code
-* Manages `{Loaded, Error, Empty, Loading}` states
-* 
-* 
+* `VIEWMODEL Generate(REFRESHMODEL)` generates data
+* `Refresh` manages `ViewState` between `{Loaded, Error, Empty, Loading}` 
+* `ViewException` reports the error when `VIEWSTATE` is `{Error}`
 ```
 @implements RazorVM<string,(int,int)>
 @if(ViewState==ViewState.Loading)
