@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sandbox.Shared", "Sandbox\S
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sandbox.Tests", "Sandbox.Tests\Sandbox.Tests.csproj", "{EA25666A-951B-4D8E-B3D2-BFBA1B4AF659}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox.WPF", "Sandbox.WPF\Sandbox.WPF.csproj", "{0A339979-E643-4083-91FA-DEE6EE9AC6AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{EA25666A-951B-4D8E-B3D2-BFBA1B4AF659}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA25666A-951B-4D8E-B3D2-BFBA1B4AF659}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EA25666A-951B-4D8E-B3D2-BFBA1B4AF659}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A339979-E643-4083-91FA-DEE6EE9AC6AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A339979-E643-4083-91FA-DEE6EE9AC6AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A339979-E643-4083-91FA-DEE6EE9AC6AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A339979-E643-4083-91FA-DEE6EE9AC6AD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

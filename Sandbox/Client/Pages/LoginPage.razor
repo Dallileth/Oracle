@@ -41,10 +41,10 @@
         <MudCard Style="top:30vh">
             <MudCardContent>
                 <MudText Typo="Typo.h5">Login</MudText>
-                <MudTextField @bind-Value="username" Variant="Variant.Outlined" Label="Username" Disabled="@logincommand.Running" Required="true" Immediate="true" />
-                <MudTextField @bind-Value="password" Variant="Variant.Outlined" Label="Password" Disabled="@logincommand.Running" Required="true" Immediate="true" />
+                <MudTextField @bind-Value="@loginbody.UserName" Variant="Variant.Outlined" Label="Username" Disabled="@logincommand.Running" Required="true" Immediate="true" />
+                <MudTextField @bind-Value="@loginbody.Password" Variant="Variant.Outlined" Label="Password" Disabled="@logincommand.Running" Required="true" Immediate="true" />
                 <MudDivider />
-                <MyButton Command="logincommand" Disabled="@(string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password) )"></MyButton>
+                <MyButton Command="logincommand" Disabled="@(string.IsNullOrWhiteSpace(loginbody.UserName) || string.IsNullOrWhiteSpace(loginbody.Password) )"></MyButton>
             </MudCardContent>
         </MudCard>
 
@@ -53,14 +53,14 @@
         <MudCard Style="top:30vh">
             <MudCardContent>
                 <MudText Typo="Typo.h5">Register</MudText>
-                <MudTextField @bind-Value="username" Variant="Variant.Outlined" Label="Username" Disabled="@registercommand.Running" Required="true" Immediate="true" />
-                <MudTextField @bind-Value="password" Variant="Variant.Outlined" Label="Password" Disabled="@registercommand.Running" Required="true" Immediate="true" />
+                <MudTextField @bind-Value="@registerbody.UserName" Variant="Variant.Outlined" Label="Username" Disabled="@registercommand.Running" Required="true" Immediate="true" />
+                <MudTextField @bind-Value="registerbody.Password" Variant="Variant.Outlined" Label="Password" Disabled="@registercommand.Running" Required="true" Immediate="true" />
                 <MudDivider />
 
                 <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary" VerticalAlign="true">
                     @foreach (var type in Enum.GetValues(typeof(IDType)))
                     {
-                        <MyButton Command="registercommand" CommandParameter="@type" Name="@type.ToString()" Disabled="@(string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))"></MyButton>
+                        <MyButton Command="registercommand" CommandParameter="@type" Name="@type.ToString()" Disabled="@(string.IsNullOrWhiteSpace(registerbody.UserName) || string.IsNullOrWhiteSpace(registerbody.Password))"></MyButton>
                     }
                 </MudButtonGroup>
             </MudCardContent>
@@ -76,45 +76,39 @@
         new SampleUser("none","Returns unauthorized","Can't access"),
         new SampleUser("user","Returns forbidden","Read and write"),
         new SampleUser("admin","YOU CAN ADD NUMBERS!!","See an admin panel")
-        };
-    string username;
-    string password;
+                };
+
+    LoginBody loginbody = new LoginBody();
+    RegisterBody registerbody = new RegisterBody();
     Command logincommand;
     Command registercommand;
     protected override void OnInitialized()
     {
 
         API.ClearAuth();
+        loginbody.Seconds = 60 * 60;
+
         logincommand = new Command("Login", StateHasChanged,
-        async (obj) =>
-        {
-            await Task.Delay(400);
-            var token = await API.Post<LoginResponse>(
-            "login",
-            new LoginBody
+            async (obj) =>
             {
-                UserName = username,
-                Password = password,
-                Seconds = 60 * 60 //1 hour
-        },
-            check_auth: false);
-            if (!string.IsNullOrWhiteSpace(token?.Token))
-            {
-                API.SetAuth("Bearer", token.Token, token.Expires);
-                Navigation.NavigateTo("/");
-            }
-        });
+                await Task.Delay(400);
+                var token = await API.Post<LoginResponse>(
+                    "login",
+                    loginbody,
+                    check_auth: false);
+                if (!string.IsNullOrWhiteSpace(token?.Token))
+                {
+                    API.SetAuth("Bearer", token.Token, token.Expires);
+                    Navigation.NavigateTo("/");
+                }
+            });
 
         registercommand = new Command("Register", StateHasChanged,
             async (idtype) =>
             {
+                registerbody.IDType = (IDType)idtype;
                 var token = await API.Put<LoginResponse>("login",
-                    new RegisterBody
-                    {
-                        IDType = (IDType)idtype,
-                        UserName = username,
-                        Password = password
-                    }, check_auth: false);
+                    registerbody, check_auth: false);
                 if (!string.IsNullOrWhiteSpace(token?.Token))
                 {
                     API.SetAuth("Bearer", token.Token, token.Expires);
